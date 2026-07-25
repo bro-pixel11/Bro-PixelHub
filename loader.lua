@@ -27,7 +27,7 @@ background.Parent = screenGui
 
 local mainContainer = Instance.new("CanvasGroup")
 mainContainer.Name = "MainContainer"
-mainContainer.Size = UDim2.new(0, 380, 0, 280)
+mainContainer.Size = UDim2.new(0, 380, 0, 290)
 mainContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 mainContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
 mainContainer.BackgroundColor3 = Color3.fromRGB(26, 31, 43)
@@ -67,8 +67,8 @@ strokeGradient.Parent = mainStroke
 
 local titleBro = Instance.new("TextLabel")
 titleBro.Name = "TitleBro"
-titleBro.Size = UDim2.new(1, 0, 0, 32)
-titleBro.Position = UDim2.new(0, 0, 0, 22)
+titleBro.Size = UDim2.new(1, 0, 0, 30)
+titleBro.Position = UDim2.new(0, 0, 0, 18)
 titleBro.BackgroundTransparency = 1
 titleBro.Text = "BRO"
 titleBro.TextColor3 = Color3.fromRGB(139, 92, 255)
@@ -79,7 +79,7 @@ titleBro.Parent = mainContainer
 local titlePixel = Instance.new("TextLabel")
 titlePixel.Name = "TitlePixel"
 titlePixel.Size = UDim2.new(1, 0, 0, 24)
-titlePixel.Position = UDim2.new(0, 0, 0, 52)
+titlePixel.Position = UDim2.new(0, 0, 0, 46)
 titlePixel.BackgroundTransparency = 1
 titlePixel.Text = "PIXEL HUB"
 titlePixel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -90,7 +90,7 @@ titlePixel.Parent = mainContainer
 local subtitle = Instance.new("TextLabel")
 subtitle.Name = "Subtitle"
 subtitle.Size = UDim2.new(1, 0, 0, 16)
-subtitle.Position = UDim2.new(0, 0, 0, 82)
+subtitle.Position = UDim2.new(0, 0, 0, 74)
 subtitle.BackgroundTransparency = 1
 subtitle.Text = "Premium Word Bomb Script"
 subtitle.TextColor3 = Color3.fromRGB(0, 217, 255)
@@ -101,7 +101,7 @@ subtitle.Parent = mainContainer
 local welcomeText = Instance.new("TextLabel")
 welcomeText.Name = "WelcomeText"
 welcomeText.Size = UDim2.new(1, 0, 0, 16)
-welcomeText.Position = UDim2.new(0, 0, 0, 104)
+welcomeText.Position = UDim2.new(0, 0, 0, 94)
 welcomeText.BackgroundTransparency = 1
 welcomeText.Text = "Welcome, " .. playerName
 welcomeText.TextColor3 = Color3.fromRGB(180, 185, 200)
@@ -111,8 +111,8 @@ welcomeText.Parent = mainContainer
 
 local spinner = Instance.new("ImageLabel")
 spinner.Name = "Spinner"
-spinner.Size = UDim2.new(0, 22, 0, 22)
-spinner.Position = UDim2.new(0.5, -11, 0, 134)
+spinner.Size = UDim2.new(0, 20, 0, 20)
+spinner.Position = UDim2.new(0.5, -10, 0, 122)
 spinner.BackgroundTransparency = 1
 spinner.Image = "rbxassetid://6031280882"
 spinner.ImageColor3 = Color3.fromRGB(0, 217, 255)
@@ -121,9 +121,9 @@ spinner.Parent = mainContainer
 local statusText = Instance.new("TextLabel")
 statusText.Name = "StatusText"
 statusText.Size = UDim2.new(1, 0, 0, 16)
-statusText.Position = UDim2.new(0, 0, 0, 168)
+statusText.Position = UDim2.new(0, 0, 0, 150)
 statusText.BackgroundTransparency = 1
-statusText.Text = "Initializing..."
+statusText.Text = "Initializing Bro-Pixel Hub..."
 statusText.TextColor3 = Color3.fromRGB(200, 205, 215)
 statusText.TextSize = 12
 statusText.Font = Enum.Font.Gotham
@@ -132,7 +132,7 @@ statusText.Parent = mainContainer
 local percentText = Instance.new("TextLabel")
 percentText.Name = "PercentText"
 percentText.Size = UDim2.new(1, 0, 0, 16)
-percentText.Position = UDim2.new(0, 0, 0, 186)
+percentText.Position = UDim2.new(0, 0, 0, 168)
 percentText.BackgroundTransparency = 1
 percentText.Text = "0%"
 percentText.TextColor3 = Color3.fromRGB(139, 92, 255)
@@ -143,7 +143,7 @@ percentText.Parent = mainContainer
 local progressBarBackground = Instance.new("Frame")
 progressBarBackground.Name = "ProgressBarBackground"
 progressBarBackground.Size = UDim2.new(0, 300, 0, 8)
-progressBarBackground.Position = UDim2.new(0.5, -150, 0, 215)
+progressBarBackground.Position = UDim2.new(0.5, -150, 0, 194)
 progressBarBackground.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
 progressBarBackground.Parent = mainContainer
 
@@ -168,6 +168,41 @@ barGradient.Color = ColorSequence.new({
 })
 barGradient.Parent = progressBarFill
 
+local statusDot = Instance.new("Frame")
+statusDot.Name = "StatusDot"
+statusDot.Size = UDim2.new(0, 6, 0, 6)
+statusDot.Position = UDim2.new(0, 20, 1, -22)
+statusDot.BackgroundColor3 = Color3.fromRGB(0, 230, 118)
+statusDot.Parent = mainContainer
+
+local dotCorner = Instance.new("UICorner")
+dotCorner.CornerRadius = UDim.new(1, 0)
+dotCorner.Parent = statusDot
+
+local footerLeft = Instance.new("TextLabel")
+footerLeft.Name = "FooterLeft"
+footerLeft.Size = UDim2.new(0, 200, 0, 16)
+footerLeft.Position = UDim2.new(0, 32, 1, -27)
+footerLeft.BackgroundTransparency = 1
+footerLeft.Text = "Status: Online  •  Build: Release"
+footerLeft.TextColor3 = Color3.fromRGB(120, 130, 150)
+footerLeft.TextSize = 11
+footerLeft.Font = Enum.Font.Gotham
+footerLeft.TextXAlignment = Enum.TextXAlignment.Left
+footerLeft.Parent = mainContainer
+
+local footerRight = Instance.new("TextLabel")
+footerRight.Name = "FooterRight"
+footerRight.Size = UDim2.new(0, 80, 0, 16)
+footerRight.Position = UDim2.new(1, -100, 1, -27)
+footerRight.BackgroundTransparency = 1
+footerRight.Text = "v1.0.0"
+footerRight.TextColor3 = Color3.fromRGB(120, 130, 150)
+footerRight.TextSize = 11
+footerRight.Font = Enum.Font.Gotham
+footerRight.TextXAlignment = Enum.TextXAlignment.Right
+footerRight.Parent = mainContainer
+
 task.spawn(function()
     while screenGui.Parent do
         spinner.Rotation = spinner.Rotation + 6
@@ -175,7 +210,19 @@ task.spawn(function()
     end
 end)
 
-mainContainer.Size = UDim2.new(0, 320, 0, 230)
+TweenService:Create(
+    titleBro,
+    TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    { TextTransparency = 0.2 }
+):Play()
+
+TweenService:Create(
+    glow,
+    TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    { ImageTransparency = 0.65 }
+):Play()
+
+mainContainer.Size = UDim2.new(0, 320, 0, 240)
 
 local fadeInBg = TweenService:Create(background, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
     BackgroundTransparency = 0.35
@@ -183,7 +230,7 @@ local fadeInBg = TweenService:Create(background, TweenInfo.new(0.5, Enum.EasingS
 
 local fadeInContainer = TweenService:Create(mainContainer, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
     GroupTransparency = 0,
-    Size = UDim2.new(0, 380, 0, 280)
+    Size = UDim2.new(0, 380, 0, 290)
 })
 
 fadeInBg:Play()
@@ -191,12 +238,16 @@ fadeInContainer:Play()
 task.wait(0.6)
 
 local stages = {
-    {pct = 0.10, text = "Loading Assets...", delay = 0.4},
-    {pct = 0.25, text = "Checking Environment...", delay = 0.5},
-    {pct = 0.45, text = "Connecting...", delay = 0.6},
-    {pct = 0.60, text = "Loading Word Bomb...", delay = 0.5},
-    {pct = 0.80, text = "Finishing...", delay = 0.4},
-    {pct = 1.00, text = "Ready!", delay = 0.3}
+    {pct = 0.05, text = "Initializing Bro-Pixel Hub...", delay = 0.30},
+    {pct = 0.12, text = "Checking compatibility...", delay = 0.40},
+    {pct = 0.22, text = "Initializing security modules...", delay = 0.35},
+    {pct = 0.35, text = "Connecting to GitHub repository...", delay = 0.45},
+    {pct = 0.48, text = "Downloading latest build...", delay = 0.50},
+    {pct = 0.62, text = "Preparing authentication...", delay = 0.40},
+    {pct = 0.75, text = "Initializing interface...", delay = 0.45},
+    {pct = 0.88, text = "Loading Word Bomb module...", delay = 0.40},
+    {pct = 0.96, text = "Finalizing setup...", delay = 0.30},
+    {pct = 1.00, text = "Launching Bro-Pixel Hub...", delay = 0.30}
 }
 
 for _, stage in ipairs(stages) do
@@ -207,14 +258,14 @@ for _, stage in ipairs(stages) do
         Size = UDim2.new(stage.pct, 0, 1, 0)
     })
     fillTween:Play()
-    task.wait(stage.delay + 0.1)
+    task.wait(stage.delay + 0.05)
 end
 
 task.wait(0.3)
 
 local fadeOutContainer = TweenService:Create(mainContainer, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
     GroupTransparency = 1,
-    Size = UDim2.new(0, 340, 0, 250)
+    Size = UDim2.new(0, 340, 0, 260)
 })
 
 local fadeOutBg = TweenService:Create(background, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
