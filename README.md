@@ -100,3 +100,21 @@ Developed by **Bro-Pixel**
 ## ⭐ Version
 
 Current Version: **v1.0.0**
+
+---
+
+## 🔑 Access
+
+Bro-Pixel Hub uses a key authentication system.
+
+💭To obtain access, contact me on Discord:
+
+**@yuxyss**
+
+Once your key has been issued, launch the loader with:
+
+```lua
+getgenv().PixelKey = "YOUR_KEY"
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/bro-pixel11/Bro-PixelHub/main/loader.lua"))()
+```
