@@ -271,35 +271,9 @@ if Network then
     end
 end
 
--- === FULL ROUND STATE RESET ===
-local function resetRoundState()
-    typingSessionId = typingSessionId + 1 
-    sessionUsedWords = {} 
-    lastHandledPrompt = ""
-    wasMyTurn = false
-    isTyping = false
-    
-    if promptLabel then promptLabel:Set("Current Prompt: Waiting...") end
-    if solutionsLabel then solutionsLabel:Set("Solutions Found: 0") end
-    if matchLabel then matchLabel:Set("Current Match: Waiting...") end
-end
+-- === DYNAMIC GC FUNCTION SEARCH (FAST & SAFE) ===
+local activeUpdateFn = nil
 
--- === TURN & PROMPT GETTER LOGIC (NO CACHE / DIRECT GC SEARCH) ===
-
--- Достаем актуальный текст из UI текущего матча
-local function getRealUIPrompt()
-    local localPlayer = Players.LocalPlayer
-    local playerGui = localPlayer and localPlayer:FindFirstChildOfClass("PlayerGui")
-    if playerGui then
-        local promptLbl = playerGui:FindFirstChild("PromptLabel", true)
-        if promptLbl and promptLbl.Text ~= "" then 
-            return promptLbl.Text:lower():gsub("%s+", "")
-        end
-    end
-    return ""
-end
-
--- Проверка структуры функции
 local function isValidStructure(fn)
     if type(fn) ~= "function" then return false end
     
@@ -326,45 +300,36 @@ local function isValidStructure(fn)
     return hasPrompt and hasPlayerID
 end
 
--- Безопасное чтение Upvalue Prompt из конкретной функции
-local function readPromptFromFn(fn)
-    local promptVal = nil
-    pcall(function()
-        for _, vv in pairs(debug_getupvalues(fn)) do
-            if type(vv) == "table" and vv.Prompt ~= nil then
-                promptVal = vv.Prompt
-                break
-            end
-        end
-    end)
-    return promptVal
-end
-
--- Каждый вызов ищет СВЕЖУЮ активную функцию без какого-либо кеширования
 local function getActiveUpdateInfoFrame()
-    local uiPrompt = getRealUIPrompt()
-    
-    -- Если UI пуст или ждет — не ищем функции
-    if uiPrompt == "" or uiPrompt == "waiting" then
-        return nil
+    -- Если ссылка ещё жива и валидна — используем её
+    if activeUpdateFn and isValidStructure(activeUpdateFn) then
+        return activeUpdateFn
     end
 
-    -- Сканируем GC каждый тик, чтобы 100% взять живую функцию с активными буквами
+    -- Иначе быстренько находим рабочую функцию
+    activeUpdateFn = nil
     for _, v in pairs(getgc()) do
         if isValidStructure(v) then
-            local p = readPromptFromFn(v)
-            if type(p) == "string" then
-                local cleanP = p:lower():gsub("%s+", "")
-                
-                -- Совпадение с UI прямо сейчас!
-                if cleanP == uiPrompt then
-                    return v
-                end
-            end
+            activeUpdateFn = v
+            return v
         end
     end
     
     return nil
+end
+
+-- === FULL ROUND STATE RESET ===
+local function resetRoundState()
+    activeUpdateFn = nil -- Сбрасываем ссылку на функцию матча
+    typingSessionId = typingSessionId + 1 
+    sessionUsedWords = {} 
+    lastHandledPrompt = ""
+    wasMyTurn = false
+    isTyping = false
+    
+    if promptLabel then promptLabel:Set("Current Prompt: Waiting...") end
+    if solutionsLabel then solutionsLabel:Set("Solutions Found: 0") end
+    if matchLabel then matchLabel:Set("Current Match: Waiting...") end
 end
 
 -- === CORE DATA GETTERS ===
@@ -379,11 +344,20 @@ local function GetLetters()
                 end
             end
         end)
-        if s and type(r) == "string" then return r end
+        if s and type(r) == "string" and r ~= "" then return r end
     end
 
-    -- Запасной фоллбэк через UI
-    return getRealUIPrompt()
+    -- Фоллбэк через UI если функция в getgc временно не дала ответ
+    local localPlayer = Players.LocalPlayer
+    local playerGui = localPlayer and localPlayer:FindFirstChildOfClass("PlayerGui")
+    if playerGui then
+        local promptLbl = playerGui:FindFirstChild("PromptLabel", true)
+        if promptLbl and promptLbl.Text ~= "" then
+            return promptLbl.Text
+        end
+    end
+
+    return nil
 end
 
 local function GetTurn()
@@ -406,7 +380,7 @@ local function getGameStatus()
     if not rawPrompt or type(rawPrompt) ~= "string" then return nil, false end
 
     local prompt = rawPrompt:lower():gsub("%s+", "")
-    if prompt == "" or prompt == "waiting" then return nil, false end
+    if prompt == "" or prompt == "waiting" or prompt == "waiting..." then return nil, false end
 
     local localPlayer = Players.LocalPlayer
     if not localPlayer then return nil, false end
