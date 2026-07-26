@@ -280,7 +280,7 @@ local function resetRoundState()
     lastHandledPrompt = ""
     wasMyTurn = false
     isTyping = false
-    cached_updateInfoFrame = nil
+    cached_updateInfoFrame = nil -- Сбрасываем кеш при смене игры!
     
     if promptLabel then promptLabel:Set("Current Prompt: Waiting...") end
     if solutionsLabel then solutionsLabel:Set("Solutions Found: 0") end
@@ -510,7 +510,6 @@ end
 
 -- === WORD SEARCH LOGIC WITH PRIORITY ===
 local function copyword(bruteforce)
-    if isTyping then return end
     local contains, isMyTurn = getGameStatus()
     
     if not contains or contains == "" then 
@@ -522,6 +521,13 @@ local function copyword(bruteforce)
         lastHandledPrompt = ""
         return
     end
+
+    -- Если чей-то ход или печать зависли, сбрасываем залипший флаг печати
+    if isTyping and contains ~= lastHandledPrompt then
+        isTyping = false
+    end
+
+    if isTyping then return end
 
     wasMyTurn = true
 
@@ -595,7 +601,7 @@ local function copyword(bruteforce)
             sessionUsedWords[finalword] = true
             if matchLabel then matchLabel:Set("Current Match: " .. finalword:upper()) end
             
-            if autotype and isMyTurn and not isTyping then
+            if autotype and isMyTurn then
                 task_spawn(function()
                     typeWordMobile(finalword, promptLower)
                 end)
