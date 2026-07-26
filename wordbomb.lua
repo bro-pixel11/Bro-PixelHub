@@ -280,70 +280,142 @@ local function resetRoundState()
     lastHandledPrompt = ""
     wasMyTurn = false
     isTyping = false
-    cached_updateInfoFrame = nil -- Сбрасываем кеш при смене игры!
+    cached_updateInfoFrame = nil -- Полный сброс кеша при перезапуске
     
     if promptLabel then promptLabel:Set("Current Prompt: Waiting...") end
     if solutionsLabel then solutionsLabel:Set("Solutions Found: 0") end
     if matchLabel then matchLabel:Set("Current Match: Waiting...") end
 end
 
--- === TURN & PROMPT GETTER LOGIC ===
+-- === TURN & PROMPT GETTER LOGIC (STRICT DUAL VALIDATION) ===
 
-local function GetTurn()
-    local s, r = pcall(function()
-        if cached_updateInfoFrame then
-            for _, vv in ipairs(debug_getupvalues(cached_updateInfoFrame)) do
-                if type(vv) == "table" and vv.PlayerID ~= nil then 
-                    return vv.PlayerID 
-                end
-            end
+-- 1. Проверяет ТОЛЬКО структуру (что перед нами именно функция updateInfoFrame)
+local function isValidStructure(fn)
+    if type(fn) ~= "function" then return false end
+    
+    local isTargetName = false
+    pcall(function()
+        if debug_getinfo(fn).name == "updateInfoFrame" then
+            isTargetName = true
         end
-
-        for _, v in pairs(getgc()) do
-            if type(v) == "function" and debug_getinfo(v).name == "updateInfoFrame" then
-                cached_updateInfoFrame = v
-                for __, vv in ipairs(debug_getupvalues(v)) do
-                    if type(vv) == "table" and vv.PlayerID ~= nil then 
-                        return vv.PlayerID 
-                    end
-                end
+    end)
+    if not isTargetName then return false end
+    
+    local hasPrompt = false
+    local hasPlayerID = false
+    
+    pcall(function()
+        for _, vv in pairs(debug_getupvalues(fn)) do
+            if type(vv) == "table" then
+                if vv.Prompt ~= nil then hasPrompt = true end
+                if vv.PlayerID ~= nil then hasPlayerID = true end
             end
         end
     end)
-    if s and r then return r end
-    return nil
+    
+    return hasPrompt and hasPlayerID
 end
 
+-- Вспомогательное чтение значения Prompt из конкретной функции
+local function readPromptFromFn(fn)
+    local promptVal = nil
+    pcall(function()
+        for _, vv in pairs(debug_getupvalues(fn)) do
+            if type(vv) == "table" and vv.Prompt ~= nil then
+                promptVal = vv.Prompt
+                break
+            end
+        end
+    end)
+    return promptVal
+end
+
+-- Единый добытчик с защитой от застывших "мертвых" функций из GC
+local function getActiveUpdateInfoFrame()
+    -- 1. Если кеш уже залочен — проверяем его актуальность
+    if cached_updateInfoFrame and isValidStructure(cached_updateInfoFrame) then
+        local currentPrompt = readPromptFromFn(cached_updateInfoFrame)
+        
+        if type(currentPrompt) == "string" then
+            local cleanP = currentPrompt:lower():gsub("%s+", "")
+            -- Если закешированная функция всё еще отдает ЖИВОЙ промпт — работаем с ней мгновенно
+            if cleanP ~= "" and cleanP ~= "waiting" then
+                return cached_updateInfoFrame
+            end
+        end
+        
+        -- Если промпт стал "" или "waiting", возможно, игра пересоздалась — сбрасываем кеш
+        cached_updateInfoFrame = nil
+    end
+
+    -- 2. Кеш сброшен или был пуст — ищем ЖИВУЮ функцию в getgc()
+    local fallbackFn = nil
+
+    for _, v in pairs(getgc()) do
+        if isValidStructure(v) then
+            local p = readPromptFromFn(v)
+            if type(p) == "string" then
+                local cleanP = p:lower():gsub("%s+", "")
+                
+                -- НАШЛИ АКТИВНУЮ! (Не пустая и не "waiting")
+                if cleanP ~= "" and cleanP ~= "waiting" then
+                    cached_updateInfoFrame = v
+                    return cached_updateInfoFrame
+                end
+                
+                -- Сохраняем структуру как временный фоллбэк на время ожидания
+                if not fallbackFn then
+                    fallbackFn = v
+                end
+            end
+        end
+    end
+    
+    -- В состоянии "waiting" возвращаем фоллбэк, но НЕ сохраняем в cached_updateInfoFrame,
+    -- чтобы на следующем тике мгновенно подхватить появление первых букв!
+    return fallbackFn
+end
+
+-- === CORE DATA GETTERS ===
+
 local function GetLetters()
-    local s, r = pcall(function()
-        if cached_updateInfoFrame then
-            for _, vv in pairs(debug_getupvalues(cached_updateInfoFrame)) do
+    local fn = getActiveUpdateInfoFrame()
+    if fn then
+        local s, r = pcall(function()
+            for _, vv in pairs(debug_getupvalues(fn)) do
                 if type(vv) == "table" and vv.Prompt ~= nil then 
                     return vv.Prompt 
                 end
             end
-        end
+        end)
+        if s and type(r) == "string" then return r end
+    end
 
-        for _, v in pairs(getgc()) do
-            if type(v) == "function" and debug_getinfo(v).name == "updateInfoFrame" then
-                cached_updateInfoFrame = v
-                for __, vv in pairs(debug_getupvalues(v)) do
-                    if type(vv) == "table" and vv.Prompt ~= nil then 
-                        return vv.Prompt 
-                    end
-                end
-            end
-        end
-    end)
-    if s and r then return r end
-
+    -- Резервный поиск через UI
     local localPlayer = Players.LocalPlayer
     local playerGui = localPlayer and localPlayer:FindFirstChildOfClass("PlayerGui")
     if playerGui then
         local promptLbl = playerGui:FindFirstChild("PromptLabel", true)
-        if promptLbl then return promptLbl.Text end
+        if promptLbl and promptLbl.Text ~= "" then 
+            return promptLbl.Text 
+        end
     end
     return ""
+end
+
+local function GetTurn()
+    local fn = getActiveUpdateInfoFrame()
+    if fn then
+        local s, r = pcall(function()
+            for _, vv in pairs(debug_getupvalues(fn)) do
+                if type(vv) == "table" and vv.PlayerID ~= nil then 
+                    return vv.PlayerID 
+                end
+            end
+        end)
+        if s and r ~= nil then return r end
+    end
+    return nil
 end
 
 local function getGameStatus()
@@ -522,7 +594,6 @@ local function copyword(bruteforce)
         return
     end
 
-    -- Если чей-то ход или печать зависли, сбрасываем залипший флаг печати
     if isTyping and contains ~= lastHandledPrompt then
         isTyping = false
     end
