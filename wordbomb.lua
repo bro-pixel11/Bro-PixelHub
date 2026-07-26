@@ -203,8 +203,6 @@ local wasMyTurn = false
 local isTyping = false 
 local typingSessionId = 0
 
-local cached_updateInfoFrame = nil
-
 local checkWordDelay = 1.0 
 local startTime = os_time()
 local totalTurns = 0
@@ -280,14 +278,13 @@ local function resetRoundState()
     lastHandledPrompt = ""
     wasMyTurn = false
     isTyping = false
-    cached_updateInfoFrame = nil -- Сброс кеша при перезапуске
     
     if promptLabel then promptLabel:Set("Current Prompt: Waiting...") end
     if solutionsLabel then solutionsLabel:Set("Solutions Found: 0") end
     if matchLabel then matchLabel:Set("Current Match: Waiting...") end
 end
 
--- === TURN & PROMPT GETTER LOGIC (UI-VERIFIED CACHE) ===
+-- === TURN & PROMPT GETTER LOGIC (NO CACHE / DIRECT GC SEARCH) ===
 
 -- Достаем актуальный текст из UI текущего матча
 local function getRealUIPrompt()
@@ -343,38 +340,25 @@ local function readPromptFromFn(fn)
     return promptVal
 end
 
--- Добытчик активной функции с жесткой верификацией по UI
+-- Каждый вызов ищет СВЕЖУЮ активную функцию без какого-либо кеширования
 local function getActiveUpdateInfoFrame()
     local uiPrompt = getRealUIPrompt()
     
-    -- 1. Если UI пуст или висит "waiting" — ничего не кешируем и отдаем nil
+    -- Если UI пуст или ждет — не ищем функции
     if uiPrompt == "" or uiPrompt == "waiting" then
-        cached_updateInfoFrame = nil
         return nil
     end
 
-    -- 2. Если закешированная функция уже есть и ее промпт в точности равен UI — используем ее
-    if cached_updateInfoFrame and isValidStructure(cached_updateInfoFrame) then
-        local currentPrompt = readPromptFromFn(cached_updateInfoFrame)
-        if type(currentPrompt) == "string" and currentPrompt:lower():gsub("%s+", "") == uiPrompt then
-            return cached_updateInfoFrame
-        end
-    end
-
-    -- 3. Кеша нет или прошлый рассинхронизировался: ищем в GC ТУ САМУЮ функцию,
-    -- чье значение Upvalue совпадает с активным текстом на экране
-    cached_updateInfoFrame = nil
-
+    -- Сканируем GC каждый тик, чтобы 100% взять живую функцию с активными буквами
     for _, v in pairs(getgc()) do
         if isValidStructure(v) then
             local p = readPromptFromFn(v)
             if type(p) == "string" then
                 local cleanP = p:lower():gsub("%s+", "")
                 
-                -- ПОЛНОЕ СОВПАДЕНИЕ С UI! Залочиваем именно её.
+                -- Совпадение с UI прямо сейчас!
                 if cleanP == uiPrompt then
-                    cached_updateInfoFrame = v
-                    return cached_updateInfoFrame
+                    return v
                 end
             end
         end
