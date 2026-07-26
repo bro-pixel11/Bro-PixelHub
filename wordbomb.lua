@@ -280,16 +280,29 @@ local function resetRoundState()
     lastHandledPrompt = ""
     wasMyTurn = false
     isTyping = false
-    cached_updateInfoFrame = nil -- Полный сброс кеша при перезапуске
+    cached_updateInfoFrame = nil -- Сброс кеша при перезапуске
     
     if promptLabel then promptLabel:Set("Current Prompt: Waiting...") end
     if solutionsLabel then solutionsLabel:Set("Solutions Found: 0") end
     if matchLabel then matchLabel:Set("Current Match: Waiting...") end
 end
 
--- === TURN & PROMPT GETTER LOGIC (STRICT DUAL VALIDATION) ===
+-- === TURN & PROMPT GETTER LOGIC (UI-VERIFIED CACHE) ===
 
--- 1. Проверяет ТОЛЬКО структуру (что перед нами именно функция updateInfoFrame)
+-- Достаем актуальный текст из UI текущего матча
+local function getRealUIPrompt()
+    local localPlayer = Players.LocalPlayer
+    local playerGui = localPlayer and localPlayer:FindFirstChildOfClass("PlayerGui")
+    if playerGui then
+        local promptLbl = playerGui:FindFirstChild("PromptLabel", true)
+        if promptLbl and promptLbl.Text ~= "" then 
+            return promptLbl.Text:lower():gsub("%s+", "")
+        end
+    end
+    return ""
+end
+
+-- Проверка структуры функции
 local function isValidStructure(fn)
     if type(fn) ~= "function" then return false end
     
@@ -316,7 +329,7 @@ local function isValidStructure(fn)
     return hasPrompt and hasPlayerID
 end
 
--- Вспомогательное чтение значения Prompt из конкретной функции
+-- Безопасное чтение Upvalue Prompt из конкретной функции
 local function readPromptFromFn(fn)
     local promptVal = nil
     pcall(function()
@@ -330,26 +343,27 @@ local function readPromptFromFn(fn)
     return promptVal
 end
 
--- Единый добытчик с защитой от застывших "мертвых" функций из GC
+-- Добытчик активной функции с жесткой верификацией по UI
 local function getActiveUpdateInfoFrame()
-    -- 1. Если кеш уже залочен — проверяем его актуальность
-    if cached_updateInfoFrame and isValidStructure(cached_updateInfoFrame) then
-        local currentPrompt = readPromptFromFn(cached_updateInfoFrame)
-        
-        if type(currentPrompt) == "string" then
-            local cleanP = currentPrompt:lower():gsub("%s+", "")
-            -- Если закешированная функция всё еще отдает ЖИВОЙ промпт — работаем с ней мгновенно
-            if cleanP ~= "" and cleanP ~= "waiting" then
-                return cached_updateInfoFrame
-            end
-        end
-        
-        -- Если промпт стал "" или "waiting", возможно, игра пересоздалась — сбрасываем кеш
+    local uiPrompt = getRealUIPrompt()
+    
+    -- 1. Если UI пуст или висит "waiting" — ничего не кешируем и отдаем nil
+    if uiPrompt == "" or uiPrompt == "waiting" then
         cached_updateInfoFrame = nil
+        return nil
     end
 
-    -- 2. Кеш сброшен или был пуст — ищем ЖИВУЮ функцию в getgc()
-    local fallbackFn = nil
+    -- 2. Если закешированная функция уже есть и ее промпт в точности равен UI — используем ее
+    if cached_updateInfoFrame and isValidStructure(cached_updateInfoFrame) then
+        local currentPrompt = readPromptFromFn(cached_updateInfoFrame)
+        if type(currentPrompt) == "string" and currentPrompt:lower():gsub("%s+", "") == uiPrompt then
+            return cached_updateInfoFrame
+        end
+    end
+
+    -- 3. Кеша нет или прошлый рассинхронизировался: ищем в GC ТУ САМУЮ функцию,
+    -- чье значение Upvalue совпадает с активным текстом на экране
+    cached_updateInfoFrame = nil
 
     for _, v in pairs(getgc()) do
         if isValidStructure(v) then
@@ -357,23 +371,16 @@ local function getActiveUpdateInfoFrame()
             if type(p) == "string" then
                 local cleanP = p:lower():gsub("%s+", "")
                 
-                -- НАШЛИ АКТИВНУЮ! (Не пустая и не "waiting")
-                if cleanP ~= "" and cleanP ~= "waiting" then
+                -- ПОЛНОЕ СОВПАДЕНИЕ С UI! Залочиваем именно её.
+                if cleanP == uiPrompt then
                     cached_updateInfoFrame = v
                     return cached_updateInfoFrame
-                end
-                
-                -- Сохраняем структуру как временный фоллбэк на время ожидания
-                if not fallbackFn then
-                    fallbackFn = v
                 end
             end
         end
     end
     
-    -- В состоянии "waiting" возвращаем фоллбэк, но НЕ сохраняем в cached_updateInfoFrame,
-    -- чтобы на следующем тике мгновенно подхватить появление первых букв!
-    return fallbackFn
+    return nil
 end
 
 -- === CORE DATA GETTERS ===
@@ -391,16 +398,8 @@ local function GetLetters()
         if s and type(r) == "string" then return r end
     end
 
-    -- Резервный поиск через UI
-    local localPlayer = Players.LocalPlayer
-    local playerGui = localPlayer and localPlayer:FindFirstChildOfClass("PlayerGui")
-    if playerGui then
-        local promptLbl = playerGui:FindFirstChild("PromptLabel", true)
-        if promptLbl and promptLbl.Text ~= "" then 
-            return promptLbl.Text 
-        end
-    end
-    return ""
+    -- Запасной фоллбэк через UI
+    return getRealUIPrompt()
 end
 
 local function GetTurn()
