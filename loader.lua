@@ -5,19 +5,24 @@ local CoreGui = game:GetService("CoreGui")
 local localPlayer = Players.LocalPlayer
 local playerName = localPlayer and localPlayer.Name or "User"
 
+-- === PROTECTED GUI PARENTING ===
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BroPixelLoader"
 screenGui.ResetOnSpawn = false
 
-if syn and syn.protect_gui then
-    syn.protect_gui(screenGui)
-    screenGui.Parent = CoreGui
-elseif gethui then
-    screenGui.Parent = gethui()
-else
-    screenGui.Parent = CoreGui
+local function parentGui(gui)
+    if gethui then
+        gui.Parent = gethui()
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(gui)
+        gui.Parent = CoreGui
+    else
+        gui.Parent = CoreGui
+    end
 end
+parentGui(screenGui)
 
+-- === UI ELEMENTS ===
 local background = Instance.new("Frame")
 background.Name = "Background"
 background.Size = UDim2.new(1, 0, 1, 0)
@@ -203,54 +208,58 @@ footerRight.Font = Enum.Font.Gotham
 footerRight.TextXAlignment = Enum.TextXAlignment.Right
 footerRight.Parent = mainContainer
 
+-- === ANIMATIONS ===
+local isSpinning = true
 task.spawn(function()
-    while screenGui.Parent do
+    while isSpinning and screenGui.Parent do
         spinner.Rotation = spinner.Rotation + 6
         task.wait(0.01)
     end
 end)
 
-TweenService:Create(
-    titleBro,
-    TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-    { TextTransparency = 0.2 }
-):Play()
-
-TweenService:Create(
-    glow,
-    TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-    { ImageTransparency = 0.65 }
-):Play()
+TweenService:Create(titleBro, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { TextTransparency = 0.2 }):Play()
+TweenService:Create(glow, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { ImageTransparency = 0.65 }):Play()
 
 mainContainer.Size = UDim2.new(0, 320, 0, 240)
 
-local fadeInBg = TweenService:Create(background, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-    BackgroundTransparency = 0.35
-})
-
-local fadeInContainer = TweenService:Create(mainContainer, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    GroupTransparency = 0,
-    Size = UDim2.new(0, 380, 0, 290)
-})
+local fadeInBg = TweenService:Create(background, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0.35 })
+local fadeInContainer = TweenService:Create(mainContainer, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { GroupTransparency = 0, Size = UDim2.new(0, 380, 0, 290) })
 
 fadeInBg:Play()
 fadeInContainer:Play()
 task.wait(0.6)
 
+-- === LOADING STAGES ===
 local stages = {
-    {pct = 0.05, text = "Initializing Bro-Pixel Hub...", delay = 0.30},
-    {pct = 0.12, text = "Checking compatibility...", delay = 0.40},
-    {pct = 0.22, text = "Initializing security modules...", delay = 0.35},
-    {pct = 0.35, text = "Connecting to GitHub repository...", delay = 0.45},
-    {pct = 0.48, text = "Downloading latest build...", delay = 0.50},
-    {pct = 0.62, text = "Preparing authentication...", delay = 0.40},
-    {pct = 0.75, text = "Initializing interface...", delay = 0.45},
-    {pct = 0.88, text = "Loading Word Bomb module...", delay = 0.40},
-    {pct = 0.96, text = "Finalizing setup...", delay = 0.30},
-    {pct = 1.00, text = "Launching Bro-Pixel Hub...", delay = 0.30}
+    {pct = 0.10, text = "Initializing Bro-Pixel Hub...", delay = 0.25},
+    {pct = 0.25, text = "Checking key configuration...", delay = 0.30},
+    {pct = 0.45, text = "Connecting to GitHub repository...", delay = 0.35},
+    {pct = 0.70, text = "Downloading Word Bomb module...", delay = 0.40},
+    {pct = 0.90, text = "Finalizing setup...", delay = 0.25},
+    {pct = 1.00, text = "Launching Bro-Pixel Hub...", delay = 0.25}
 }
 
-for _, stage in ipairs(stages) do
+local function showError(msg)
+    isSpinning = false
+    statusText.Text = "❌ " .. msg
+    statusText.TextColor3 = Color3.fromRGB(255, 75, 75)
+    statusDot.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+    percentText.Text = "FAIL"
+    percentText.TextColor3 = Color3.fromRGB(255, 75, 75)
+    
+    task.wait(2.5)
+    
+    local fadeOut = TweenService:Create(mainContainer, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { GroupTransparency = 1 })
+    local fadeOutBg = TweenService:Create(background, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 1 })
+    fadeOut:Play()
+    fadeOutBg:Play()
+    fadeOutBg.Completed:Wait()
+    screenGui:Destroy()
+end
+
+-- Stage 1 & 2 Execution
+for i = 1, 2 do
+    local stage = stages[i]
     statusText.Text = stage.text
     percentText.Text = tostring(math.floor(stage.pct * 100)) .. "%"
     
@@ -261,8 +270,41 @@ for _, stage in ipairs(stages) do
     task.wait(stage.delay + 0.05)
 end
 
-task.wait(0.3)
+-- Check if user provided key in script before trying to fetch
+local userKey = getgenv().PixelKey or _G.PixelKey or PixelKey
+if not userKey or userKey == "" then
+    showError("Key missing! Set getgenv().PixelKey")
+    return
+end
 
+-- Download main script
+local scriptRaw
+local downloadSuccess = pcall(function()
+    scriptRaw = game:HttpGet("https://raw.githubusercontent.com/bro-pixel11/Bro-PixelHub/main/wordbomb.lua")
+end)
+
+-- Stage 3 to End
+for i = 3, #stages do
+    local stage = stages[i]
+    statusText.Text = stage.text
+    percentText.Text = tostring(math.floor(stage.pct * 100)) .. "%"
+    
+    local fillTween = TweenService:Create(progressBarFill, TweenInfo.new(stage.delay, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(stage.pct, 0, 1, 0)
+    })
+    fillTween:Play()
+    task.wait(stage.delay + 0.05)
+end
+
+if not downloadSuccess or not scriptRaw then
+    showError("Failed to fetch script from GitHub!")
+    return
+end
+
+isSpinning = false
+task.wait(0.2)
+
+-- Fade Out Loader UI
 local fadeOutContainer = TweenService:Create(mainContainer, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
     GroupTransparency = 1,
     Size = UDim2.new(0, 340, 0, 260)
@@ -278,4 +320,10 @@ fadeOutBg.Completed:Wait()
 
 screenGui:Destroy()
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/bro-pixel11/Bro-PixelHub/main/wordbomb.lua"))()
+-- Execute main script (it will perform HWID check and kick if unauthorized)
+local loadedScript, parseErr = loadstring(scriptRaw)
+if loadedScript then
+    loadedScript()
+else
+    warn("❌ Loader Error parsing main script: " .. tostring(parseErr))
+end
