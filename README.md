@@ -42,7 +42,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/bro-pixel11/Bro-Pixel
 Bro-PixelHub
 │
 ├── loader.lua
-├── wordbomb.lua
+├── access.lua
 └── README.md
 ```
 
